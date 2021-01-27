@@ -1,0 +1,166 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
+How did Americans Vote
+
+Ruize Yu ry2404
+
+Background
+
+In 2016 and 2020 President Election, there's an interesting phenomenon that large cities are blue while suburban and rural areas are red. Trump's main supporter group is considered to be white working class while Democrat's supporters are rich middle class. In this project, I'm going to analyze this phenomenon from education and family income approaches.
+```{r,echo=FALSE}
+library(haven)
+library(tidyverse)
+library(ggplot2)
+anes_data <- read_sav('C:/Users/yurui/Spring2021-Project1-JoJoHunter/anes_timeseries_cdf_sav/anes_timeseries_cdf.sav')
+
+Election_years=as.character(seq(1952,2016,4))
+```
+
+1. vote count: are the votes of the two main parties close?
+
+```{r,echo=FALSE}
+anes_use <- anes_data %>% mutate(
+  year=as_factor(VCF0004),
+  vote=as_factor(VCF0706),
+  education_group=as_factor(VCF0110),
+  urbanism=as_factor(VCF0111),
+  f_income=as_factor(VCF0114)
+)%>%
+  filter(year %in% Election_years)%>%
+  select(year,vote,education_group,urbanism,f_income) %>%
+  filter(!is.na(vote)&!is.na(year))
+
+save(anes_use,file='C:/Users/yurui/Spring2021-Project1-JoJoHunter/data/data_use.RData')
+
+votes <- anes_use %>%
+  filter(vote!='7. Did not vote or voted but not for president (exc.1972)') %>%
+  group_by(year,vote) %>% count(vote) %>% group_by(year)%>% mutate(prop=n/sum(n))
+
+ggplot(votes,aes(x=year,y=prop,fill=vote))+
+  geom_bar(stat='identity',colour='black')+
+  scale_fill_manual(values=c('dodgerblue3','firebrick2','gold1','green'))+
+  
+  theme(axis.text.x=element_text(angle=90))+
+  labs(title='Party\'s voter structure grouped by education levels')
+```
+
+In some years, Democrat has dominant lead. But in general, the two main parties are close.
+
+
+2. Education: is there a huge difference of education level between voters of these two parties?
+
+```{r,echo=FALSE}
+anes_education <- anes_use %>%
+  filter(vote!='7. Did not vote or voted but not for president (exc.1972)'&!is.na(education_group))%>%
+  group_by(year,education_group) %>%
+  count(vote)%>%
+  group_by(year,education_group)%>%
+  mutate(prop=n/sum(n))
+  
+ggplot(anes_education,aes(x=year,y=prop,fill=vote))+
+  geom_bar(stat='identity',colour='black')+
+  scale_fill_manual(values=c('dodgerblue3','firebrick2','gold1','lightgoldenrod1'))+
+  facet_wrap(~education_group,ncol=1)+
+  theme(axis.text.x=element_text(angle=90))+
+  labs(title='Votes of different education levels')
+  
+```
+
+From this graph we can see that for Grade school or less and High school groups, their vote are pretty close and consistent. There's no significant changes from 1952 to 2016. However, for the other two groups, the overall vote trending for Republican party is decreasing. This is more obvious for College or advanced degree.
+
+```{r,echo=FALSE}
+anes_party <- anes_use %>%
+  filter(vote!='7. Did not vote or voted but not for president (exc.1972)'&!is.na(education_group))%>%
+  group_by(year,vote) %>%
+  count(education_group)%>%
+  group_by(year,vote)%>%
+  mutate(prop=n/sum(n))
+
+ggplot(anes_party,aes(x=year,y=prop,fill=education_group))+
+  geom_bar(stat='identity',colour='black')+
+  scale_fill_manual(values=c('dodgerblue3','firebrick2','gold1','lightgoldenrod1'))+
+  facet_wrap(~vote,ncol=1)+
+  theme(axis.text.x=element_text(angle=90))+
+  labs(title='Party\'s voter structure grouped by education levels')
+```
+
+Because most people vote for either democrat or republican, we will focus on these two parties. From the graph we can see that the percentage of different education groups are almost the same for these two parties. There's an increasing number of college or advanced degree for both parties. But that's probably because of the change of education policies. In general, the education levels of voters of both parties are similar.
+
+
+3. Living area: is it a tradition that people in large cities favor Democrat while rural are people like Republican?
+
+```{r,echo=FALSE}
+anes_democrat_urbanism <- anes_use%>%
+  filter(vote=='1. Democrat'&!is.na(urbanism))%>%
+  group_by(year) %>%
+  count(urbanism)%>%
+  group_by(year)%>%
+  mutate(prop=n/sum(n))
+
+ggplot(anes_democrat_urbanism,aes(x=year,y=prop,group=urbanism,fill=urbanism))+geom_bar(stat='identity',position='dodge')+
+  theme(axis.text.x=element_text(angle=90))+
+  labs(title='Democrat Party voter\'s living area')
+
+anes_republican_urbanism <- anes_use%>%
+  filter(vote=='2. Republican'&!is.na(urbanism))%>%
+  group_by(year) %>%
+  count(urbanism)%>%
+  group_by(year)%>%
+  mutate(prop=n/sum(n))
+
+ggplot(anes_republican_urbanism,aes(x=year,y=prop,group=urbanism,fill=urbanism))+geom_bar(stat='identity',position='dodge')+
+  theme(axis.text.x=element_text(angle=90))+
+  labs(title='Republican Party voter\'s living area')
+```
+
+For Democrat, the percentages of supporters' living areas are close. While for Republican, most of their supporters live in suburban or rural areas. The percentage of central cities' supporters is decreasing from 1952 to 2000.
+
+
+4. Family income: is there a significant difference of family income between these two parties' supporters?
+
+```{r,echo=FALSE}
+anes_democrat_f_income <- anes_use%>%
+  filter(vote=='1. Democrat'&!is.na(f_income))%>%
+  group_by(year) %>%
+  count(f_income)%>%
+  group_by(year)%>%
+  mutate(prop=n/sum(n))
+
+ggplot(anes_democrat_f_income,aes(x=year,y=prop,group=f_income,fill=f_income))+
+  geom_line(aes(color=f_income,linetype=f_income))+
+  theme(axis.text.x=element_text(angle=90))+
+  labs(title='Democrat Party voter\'s family income')
+
+anes_republican_f_income <- anes_use%>%
+  filter(vote=='2. Republican'&!is.na(f_income))%>%
+  group_by(year) %>%
+  count(f_income)%>%
+  group_by(year)%>%
+  mutate(prop=n/sum(n))
+
+ggplot(anes_republican_f_income,aes(x=year,y=prop,group=f_income,fill=f_income))+
+  geom_line(aes(color=f_income,linetype=f_income))+
+  theme(axis.text.x=element_text(angle=90))+
+  labs(title='Republican Party voter\'s family income')
+```
+
+We can see that the main voter groups for both parties are within 34-95 percentile. Low income family(0-33 percentile) has heavier percentage in Democrat while extremely rich family has more percentage in Republican. 
+
+
+Conclusion
+
+It's true that people live in suburban and rural areas tend to support Republican while people in central cities favor Democrat. And there are more people with college or advanced degree support democrat. But there is no huge difference in case of family income. 34-95 percentile families have almost same percentage for both parties.
+After cleaning the empty values, the number of data is limited to several thousands. Compare to millions of actual votes, our data is extremely small which means the result might not be accurate. To improve the accuracy, we need more data to conduct the analysis.
+
+
+
+
+
+
+
+
+
+
